@@ -1,5 +1,5 @@
 import commander from 'commander'
-import { Runner, Commands } from './runner'
+import { Runner, CommandEnum } from './runner'
 
 export default async () => {
     const runner = new Runner(new commander.Command())
@@ -9,13 +9,24 @@ export default async () => {
         .version('0.0.1')
 
     runner.program.command("result").description("Get your examination result.")
-        .argument('<semester>')
+        .argument('<semester>', ' Must be in the range of 1 >= semester <= 3.')
         .argument('<year>', 'Year of the semester. MUST BE IN THE FORMAT XXXX/XXXX (e.g. 2021/2022)')
-        .action(async (semester: string, year: string) => {
-            await runner.execute(Commands.Result, {
+        .option('-w, --width <width>', 'Set table output width.', '90')
+        .action(async (semester: string, year: string, options) => {
+            await runner.execute(CommandEnum.Result, {
                 semester,
-                year
+                year,
+                options
             })
+        })
+
+    runner.program.command('timetable')
+        .description('Show class timetabl for the given semester.')
+        .argument('<semester>', ' Must be in the range of 1 >= semester <= 3.')
+        .argument('<year>', 'Year of the semester. MUST BE IN THE FORMAT XXXX/XXXX (e.g. 2021/2022)')
+        .option('-w, --width <width>', 'Set table output width.', '90')
+        .action(async (semester: string, year: string, options) => {
+            await runner.execute(CommandEnum.Timetable, { semester, year, options })
         })
 
     runner.program.command("login")
@@ -26,7 +37,7 @@ export default async () => {
 
     runner.program.command('test')
         .action(async () => {
-            await runner.execute(Commands.Test, {})
+            await runner.execute(CommandEnum.Test, {})
         })
 
     await runner.program.parseAsync()

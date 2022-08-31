@@ -55,7 +55,17 @@ const list: TCommandCollections = {
 		name: "authenticate",
 		description: "Authenticate by providing your username and password for i-ma'luum",
 		arguments: [],
-		options: [],
+		options: [
+			{
+				flags: "-i, --interactive",
+			},
+			{
+				flags: "-u, --username <username>",
+			},
+			{
+				flags: "-p, --password <password>",
+			},
+		],
 	},
 };
 

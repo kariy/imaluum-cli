@@ -7,13 +7,13 @@ export enum CommandEnum {
 
 export type TCommandOption = {
 	flags: string;
-	description: string;
+	description?: string;
 	defaultValue?: string | boolean | string[];
 };
 
 export type TCommandArgument = {
 	name: string;
-	description: string;
+	description?: string;
 	defaultValue?: unknown;
 };
 
@@ -34,7 +34,17 @@ export type TCommandActionParams<T extends CommandEnum> = T extends CommandEnum.
 	? TResultCommandActionParams
 	: T extends CommandEnum.Timetable
 	? TTimetableCommandActionParams
+	: T extends CommandEnum.Authenticate
+	? TAuthCommandActionParams
 	: undefined;
+
+export type TAuthCommandActionParams = {
+	options: {
+		interactive: string;
+		username?: string;
+		password?: string;
+	};
+};
 
 export type TResultCommandActionParams = {
 	semester: string;

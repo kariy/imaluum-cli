@@ -1,30 +1,33 @@
 export enum CommandEnum {
+	Test,
 	Result,
 	Timetable,
-	Test,
+	Authenticate,
 }
 
-export type TCommandOptions = {
+export type TCommandOption = {
 	flags: string;
 	description: string;
 	defaultValue?: string | boolean | string[];
 };
 
-export type TCommandArguments = {
+export type TCommandArgument = {
 	name: string;
 	description: string;
 	defaultValue?: unknown;
 };
 
+type a = keyof typeof CommandEnum;
+
 export type TCommand = {
 	name: string;
 	description: string;
-	arguments: TCommandArguments[];
-	options: TCommandOptions[];
+	arguments: TCommandArgument[];
+	options: TCommandOption[];
 };
 
 export type TCommandCollections = {
-	[Property in Lowercase<Exclude<keyof typeof CommandEnum, number>>]: TCommand;
+	[Property in Lowercase<keyof typeof CommandEnum>]: TCommand;
 };
 
 export type TCommandActionParams<T extends CommandEnum> = T extends CommandEnum.Result
@@ -49,5 +52,5 @@ export type TiMaluumLoginCredentials = {
 };
 
 export type TiMaluumPageLinkCollections = {
-	[Property in Uppercase<Exclude<keyof typeof CommandEnum, number>>]: string;
+	[Property in Uppercase<Exclude<keyof typeof CommandEnum, "Authenticate">>]: string;
 };

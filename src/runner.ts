@@ -1,5 +1,5 @@
-import commander from "commander";
 import puppeteer from "puppeteer";
+import { ErrorOptions } from "commander";
 
 import fs from "node:fs";
 import cp from "child_process";
@@ -8,55 +8,79 @@ import readline from "node:readline";
 import {
 	CREDENTIALS_FILE_PATH,
 	DUMP_BASE_PATH,
+	IMALUUM_LOGIN_PAGE,
 	IMALUUM_SUBPAGE_LINKS,
 } from "./lib/constants";
 import { CommandEnum, TCommandActionParams, TiMaluumLoginCredentials } from "./lib/types";
 
-export interface Configurations {}
+class IMaluumSite {
+	protected browser: puppeteer.Browser | null;
+	protected page: puppeteer.Page | null;
+	protected errorCallback:
+		| ((message: string, errorOptions?: ErrorOptions) => never)
+		| null;
 
-export class Runner {
-	program: commander.Command;
-
-	private readonly config: Configurations;
-	private credentials: TiMaluumLoginCredentials | null;
-	private browser: puppeteer.Browser | null;
-	private page: puppeteer.Page | null;
-
-	constructor(command: commander.Command) {
-		this.program = command;
+	protected constructor() {
 		this.browser = null;
 		this.page = null;
-		this.credentials = null;
-
-		this.config = {};
+		this.errorCallback = null;
 	}
 
-	async execute<T extends CommandEnum>(command: T, args?: TCommandActionParams<T>) {
-		await this._setup();
+	protected async _open() {
+		this.browser = await puppeteer.launch();
+		this.page = await this.browser.newPage();
+		fs.mkdirSync(DUMP_BASE_PATH, { recursive: true });
+
+		// await this._login();
+	}
+
+	setErrorCallback(fn: typeof this.errorCallback): void {
+		this.errorCallback = fn;
+	}
+
+	protected async _close() {
+		if (this.browser == null) throw new Error("browser puppeteer not running");
+		await this.browser.close();
+	}
+}
+
+export class IMaluumRunner extends IMaluumSite {
+	constructor() {
+		super();
+	}
+
+	async execute<T extends CommandEnum>(command: T, ...args: any[]) {
+		if (command === CommandEnum.Authenticate) return this._authenticate();
+
+		await this._open();
+		await this._login();
 
 		switch (command) {
 			case CommandEnum.Result: {
-				await this._result(args as TCommandActionParams<CommandEnum.Result>);
+				await this._result(...args);
 				break;
 			}
 			case CommandEnum.Timetable: {
-				await this._timetable(
-					args as TCommandActionParams<CommandEnum.Timetable>
-				);
+				await this._timetable(...args);
 				break;
 			}
 			case CommandEnum.Test: {
-				// await this._test()
+				await this._test(command, ...args);
 				break;
 			}
 			default:
-				throw this.program.error("[ERROR] Unknown command");
+				throw this.error("[ERROR] Unknown command");
 		}
 
-		await this._finish();
+		await this._close();
 	}
 
-	async authenticate() {
+	private error(message: string, errorOptions?: ErrorOptions): never {
+		if (this.errorCallback) throw this.errorCallback(message, errorOptions);
+		throw new Error(message);
+	}
+
+	private async _authenticate() {
 		const rl = readline.createInterface({
 			input: process.stdin,
 			output: process.stdout,
@@ -85,31 +109,29 @@ export class Runner {
 		}
 	}
 
-	private async _result({
-		semester,
-		year,
-		options,
-	}: TCommandActionParams<CommandEnum.Result>) {
+	private async _result(...args: any[]) {
 		if (this.page == null) throw new Error("Puppeteer page not running");
 
-		if (semester.match(/[123]/) == null) {
-			throw this.program.error(
+		const { semester, year, options }: TCommandActionParams<CommandEnum.Result> = {
+			semester: args[0],
+			year: args[1],
+			options: args[2],
+		};
+
+		if (semester.match(/^[123]$/) == null) {
+			throw this.error(
 				"Invalid <semester>. <semester> must be in the range of 1 >= semester <= 3."
 			);
 		}
-
 		if (year.match(/^([\d]*)\/([\d]*)*$/) == null) {
-			throw this.program.error(
+			throw this.error(
 				"Invalid <year>. Hint: Make sure it is in the format XXXX/XXXX. (e.g. 2021/2022)"
 			);
 		}
-
 		await this._navigateToPage(IMALUUM_SUBPAGE_LINKS.RESULT);
-
 		await this._selectTimetableAndResultDropDownMenuItem(semester, year);
 
 		const RESULT_TABLE_PATH = `${DUMP_BASE_PATH}/result_table.html`;
-
 		const outputStr = await this._extractTimetableAndResultTableElement(
 			this.page,
 			RESULT_TABLE_PATH,
@@ -118,7 +140,6 @@ export class Runner {
 
 		if (outputStr.length !== 0) {
 			const match = outputStr.match(/.*\n/);
-
 			if (match != null) {
 				const bar = "-";
 				const len = match[0].length;
@@ -129,21 +150,23 @@ export class Runner {
 		}
 	}
 
-	private async _timetable({
-		semester,
-		year,
-		options,
-	}: TCommandActionParams<CommandEnum.Timetable>) {
+	private async _timetable(...args: any[]) {
 		if (this.page == null) throw new Error("Puppeteer page not running");
 
-		if (semester.match(/[123]/) == null) {
-			throw this.program.error(
+		const { semester, year, options }: TCommandActionParams<CommandEnum.Result> = {
+			semester: args[0],
+			year: args[1],
+			options: args[2],
+		};
+
+		if (semester.match(/^[123]$/) == null) {
+			throw this.error(
 				"Invalid <semester>. <semester> must be in the range of 1 >= semester <= 3."
 			);
 		}
 
 		if (year.match(/^([\d]*)\/([\d]*)*$/) == null) {
-			throw this.program.error(
+			throw this.error(
 				"Invalid <year>. Hint: Make sure it is in the format XXXX/XXXX. (e.g. 2021/2022)"
 			);
 		}
@@ -209,9 +232,7 @@ export class Runner {
 		);
 
 		if (selected.idx === -1) {
-			throw this.program.error(
-				`[ERROR] Result of ${selected.fullStr} does not exist!`
-			);
+			throw this.error(`[ERROR] Result of ${selected.fullStr} does not exist!`);
 		}
 
 		elemHandles[selected.idx].evaluate((elem) =>
@@ -247,32 +268,21 @@ export class Runner {
 		await this.page.waitForNavigation();
 	}
 
-	private async _setup() {
-		this.browser = await puppeteer.launch();
-		this.page = await this.browser.newPage();
-		fs.mkdirSync(DUMP_BASE_PATH, { recursive: true });
-
-		await this._login();
-	}
-
 	private async _login() {
 		try {
-			const credentials = this._readCredentials();
-			this.credentials = credentials as TiMaluumLoginCredentials;
+			const credentials = this._readCredentialsFromFile();
 
 			if (this.browser == null) throw new Error("browser puppeteer not running");
 
 			if (this.page == null) throw new Error("page puppeteer not running");
 
-			await this.page.goto(
-				"https://cas.iium.edu.my:8448/cas/login?service=https%3a%2f%2fimaluum.iium.edu.my%2fhome"
-			);
+			await this.page.goto(IMALUUM_LOGIN_PAGE);
 
 			const usernameInput = await this.page.$("#username");
-			await usernameInput?.type(this.credentials.username);
+			await usernameInput?.type(credentials.username);
 
 			const passwordInput = await this.page.$("#password");
-			await passwordInput?.type(this.credentials.password);
+			await passwordInput?.type(credentials.password);
 
 			const form = await this.page.$("#fm1");
 			await form?.press("Enter");
@@ -284,13 +294,13 @@ export class Runner {
 				throw new Error("Unable to proceed from login!");
 			}
 		} catch (e) {
-			throw this.program.error(
+			throw this.error(
 				"Unable to login to i-ma'luum! Please run the `login` command to authenticate yourself."
 			);
 		}
 	}
 
-	private _readCredentials() {
+	private _readCredentialsFromFile() {
 		try {
 			const credentialsStr = fs.readFileSync(CREDENTIALS_FILE_PATH, {
 				encoding: "utf-8",
@@ -301,8 +311,7 @@ export class Runner {
 		}
 	}
 
-	private async _finish() {
-		if (this.browser == null) throw new Error("browser puppeteer not running");
-		await this.browser.close();
+	private async _test(command: any, ...args: any) {
+		console.log("this is a test", command, args);
 	}
 }

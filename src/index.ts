@@ -1,58 +1,37 @@
 import commander from "commander";
 
-import { Runner } from "./runner";
-import { CommandEnum } from "./lib/types";
+import { Command } from "./command";
+import { IMaluumRunner } from "./runner";
+import commandlist from "./lib/commandlist";
+import { CommandEnum, TCommandCollections } from "./lib/types";
 
 export default async (): Promise<void> => {
-	const runner = new Runner(new commander.Command());
+	const runner = new IMaluumRunner();
+	const command = new Command(
+		"imaluum",
+		"A tool to access i-ma'luum directly from your command line.",
+		"0.0.1"
+	);
 
-	runner.program
-		.name("imaluum")
-		.description("A tool to access i-ma'luum directly from your command line.")
-		.version("0.0.1");
+	// This is so that `Runner` class can have access to the `Command` error function
+	// throwing a normal error would not allows `Command` to handle it.
+	// Somewhat a janky solution, but it should be okay for now.
+	runner.setErrorCallback((message) => command.program.error(message));
 
-	runner.program
-		.command("result")
-		.description("Get your examination result.")
-		.argument("<semester>", " Must be in the range of 1 >= semester <= 3.")
-		.argument(
-			"<year>",
-			"Year of the semester. MUST BE IN THE FORMAT XXXX/XXXX (e.g. 2021/2022)"
-		)
-		.option("-w, --width <width>", "Set table output width.", "90")
-		.showHelpAfterError(true)
-		.action(async (semester: string, year: string, options) => {
-			await runner.execute(CommandEnum.Result, {
-				semester,
-				year,
-				options,
-			});
-		});
+	for (const item in commandlist) {
+		command.createCommand(
+			commandlist[item as keyof TCommandCollections],
+			async (...args: any[]) => {
+				const enumKey = capitalize(item);
+				runner.execute(CommandEnum[enumKey as keyof typeof CommandEnum], ...args);
+			}
+		);
+	}
 
-	runner.program
-		.command("timetable")
-		.description("Show class timetable for the given semester.")
-		.argument("<semester>", " Must be in the range of 1 >= semester <= 3.")
-		.argument(
-			"<year>",
-			"Year of the semester. MUST BE IN THE FORMAT XXXX/XXXX (e.g. 2021/2022)"
-		)
-		.option("-w, --width <width>", "Set table output width.", "90")
-		.showHelpAfterError(true)
-		.action(async (semester: string, year: string, options) => {
-			await runner.execute(CommandEnum.Timetable, { semester, year, options });
-		});
-
-	runner.program
-		.command("login")
-		.description("Authenticate by providing your username and password for i-ma'luum")
-		.action(async () => {
-			await runner.authenticate();
-		});
-
-	runner.program.command("test").action(async () => {
-		await runner.execute(CommandEnum.Test);
-	});
-
-	await runner.program.parseAsync();
+	await command.program.parseAsync();
 };
+
+function capitalize(str: string): string {
+	const newStr = str.toLowerCase();
+	return newStr.replace(/^\w/, newStr.charAt(0).toUpperCase());
+}

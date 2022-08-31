@@ -1,5 +1,5 @@
 #! /usr/bin/env node
 
-import execute from '../lib/index.js'
+import execute from "../src/index.js";
 
-execute()
+execute();

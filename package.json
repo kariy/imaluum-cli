@@ -1,7 +1,7 @@
 {
 	"name": "imaluum-cli",
 	"version": "1.0.0",
-	"description": "",
+	"description": "Access i-Ma'luum directly from your favourite command line.",
 	"main": "src/index.js",
 	"bin": {
 		"imaluum": "./bin/index.js"
@@ -9,7 +9,8 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"compile": "tsc",
-		"start": "tsc && node ./bin/index.js"
+		"start": "npm run compile && node ./bin/index.js",
+		"preinstall": "npm run compile"
 	},
 	"repository": {
 		"type": "git",
@@ -28,5 +29,6 @@
 	},
 	"devDependencies": {
 		"typescript": "^4.8.2"
-	}
+	},
+	"preferGlobal": true
 }

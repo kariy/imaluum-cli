@@ -1,11 +1,9 @@
-import commander from "commander";
-
 import { Command } from "./command";
 import { IMaluumRunner } from "./runner";
-import commandlist from "./lib/commandlist";
+import commandlist from "./lib/commandList";
 import { CommandEnum, TCommandCollections } from "./lib/types";
 
-export default async (): Promise<void> => {
+export default async (argv?: readonly string[] | undefined): Promise<void> => {
 	const runner = new IMaluumRunner();
 	const command = new Command(
 		"imaluum",
@@ -27,8 +25,7 @@ export default async (): Promise<void> => {
 			}
 		);
 	}
-
-	await command.program.parseAsync();
+	await command.program.parseAsync(argv);
 };
 
 function capitalize(str: string): string {

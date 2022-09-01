@@ -12,7 +12,10 @@ export class Command {
 			.version(version);
 	}
 
-	createCommand(command: TCommand, action: (...args: any[]) => void | Promise<void>) {
+	createCommand(
+		command: TCommand,
+		action: (...args: any[]) => void | Promise<void> = () => {}
+	) {
 		const subCommand = new commander.Command()
 			.command(command.name)
 			.description(command.description);

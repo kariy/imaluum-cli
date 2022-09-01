@@ -11,7 +11,15 @@ import {
 	IMALUUM_LOGIN_PAGE,
 	IMALUUM_SUBPAGE_LINKS,
 } from "./lib/constants";
-import { CommandEnum, TCommandActionParams, TiMaluumLoginCredentials } from "./lib/types";
+import {
+	AnsiColourEnum,
+	AnsiTextStyleEnum,
+	CommandEnum,
+	TCommandActionParams,
+	TiMaluumLoginCredentials,
+} from "./lib/types";
+import { styleText } from "./lib/utils";
+import { Loader, TTYSync } from "./lib/utils/loader";
 
 class IMaluumSite {
 	protected browser: puppeteer.Browser | null;
@@ -65,9 +73,16 @@ export class IMaluumRunner extends IMaluumSite {
 			try {
 				await this._login();
 			} catch (e) {
-				console.error(e);
+				// console.error(e);
 				throw this.error(
-					"You are not yet authenticated!. Please run the `authenticate` command first."
+					`${styleText(
+						"You are not yet authenticated!",
+						AnsiColourEnum.RED,
+						AnsiTextStyleEnum.BOLD
+					)} Please run the ${styleText(
+						"authenticate",
+						AnsiColourEnum.CYAN
+					)} command first.`
 				);
 			}
 
@@ -109,8 +124,8 @@ export class IMaluumRunner extends IMaluumSite {
 			fs.close(file);
 		};
 
-		let username = options.username;
-		let password = options.password;
+		let username = options.username || "";
+		let password = options.password || "";
 
 		if (options.interactive) {
 			const rl = readline.createInterface({
@@ -122,23 +137,34 @@ export class IMaluumRunner extends IMaluumSite {
 				await new Promise((resolve) => rl.question(query, resolve));
 
 			try {
-				username = (await prompt("# Username >> ")) as string;
-				password = (await prompt("# Password >> ")) as string;
+				username = (await prompt(
+					`${styleText("# Username >> ", AnsiTextStyleEnum.BOLD)}`
+				)) as string;
+
+				password = (await prompt(
+					`${styleText("# Password >> ", AnsiTextStyleEnum.BOLD)}`
+				)) as string;
+
+				await TTYSync.clearAboveUntilSync(3);
+
 				rl.close();
 			} catch (error) {
 				throw error;
 			}
-		} else {
-			if (!username) throw this.error("Username is missing");
-			if (!password) throw this.error("Password is missing");
 		}
 
+		if (!username) throw this.error("Username is missing");
+		if (!password) throw this.error("Password is missing");
+
 		try {
-			await this._loginToIMaluum(username, password);
+			const loader = new Loader("Authenticating to i-Ma'luum");
+
+			await loader.startAsyncTask(
+				async () => await this._loginToIMaluum(username, password)
+			);
 
 			writeToFileSync(CREDENTIALS_FILE_PATH, `${username}\n${password}`);
-
-			console.log("\n🎉 You are authenticated!");
+			console.log("🎉 You are authenticated!");
 		} catch (e) {
 			throw e;
 		}
@@ -163,15 +189,21 @@ export class IMaluumRunner extends IMaluumSite {
 				"Invalid <year>. Hint: Make sure it is in the format XXXX/XXXX. (e.g. 2021/2022)"
 			);
 		}
-		await this._navigateToPage(IMALUUM_SUBPAGE_LINKS.RESULT);
-		await this._selectTimetableAndResultDropDownMenuItem(semester, year);
 
-		const RESULT_TABLE_PATH = `${DUMP_BASE_PATH}/result_table.html`;
-		const outputStr = await this._extractTimetableAndResultTableElement(
-			this.page,
-			RESULT_TABLE_PATH,
-			{ width: options.width }
-		);
+		const loader = new Loader(`Fetching exam result for Sem ${semester} ${year}`);
+
+		const outputStr = await loader.startAsyncTask(async () => {
+			await this._navigateToPage(IMALUUM_SUBPAGE_LINKS.RESULT);
+			await this._selectTimetableAndResultDropDownMenuItem(semester, year);
+
+			const RESULT_TABLE_PATH = `${DUMP_BASE_PATH}/result_table.html`;
+
+			return await this._extractTimetableAndResultTableElement(
+				this.page as puppeteer.Page,
+				RESULT_TABLE_PATH,
+				{ width: options.width }
+			);
+		});
 
 		if (outputStr.length !== 0) {
 			const match = outputStr.match(/.*\n/);
@@ -206,26 +238,30 @@ export class IMaluumRunner extends IMaluumSite {
 			);
 		}
 
-		await this._navigateToPage(IMALUUM_SUBPAGE_LINKS.TIMETABLE);
+		const loader = new Loader(`Fetching timetable for Sem ${semester} ${year}`);
 
-		await this._selectTimetableAndResultDropDownMenuItem(semester, year);
+		const tableStr = await loader.startAsyncTask(async () => {
+			await this._navigateToPage(IMALUUM_SUBPAGE_LINKS.TIMETABLE);
 
-		const TIMETABLE_TABLE_PATH = `${DUMP_BASE_PATH}/timetable_table.html`;
+			await this._selectTimetableAndResultDropDownMenuItem(semester, year);
 
-		const outputStr = await this._extractTimetableAndResultTableElement(
-			this.page,
-			TIMETABLE_TABLE_PATH,
-			{ width: options.width }
-		);
+			const TIMETABLE_TABLE_PATH = `${DUMP_BASE_PATH}/timetable_table.html`;
 
-		if (outputStr.length !== 0) {
-			const match = outputStr.match(/.*\n/);
+			return await this._extractTimetableAndResultTableElement(
+				this.page as puppeteer.Page,
+				TIMETABLE_TABLE_PATH,
+				{ width: options.width }
+			);
+		});
+
+		if (tableStr.length !== 0) {
+			const match = tableStr.match(/.*\n/);
 
 			if (match != null) {
 				const bar = "-";
 				const len = match[0].length;
 				console.log(`${bar.repeat(len)}\n`);
-				console.log(outputStr);
+				console.log(tableStr);
 				console.log(`${bar.repeat(len)}`);
 			}
 		}
@@ -306,7 +342,7 @@ export class IMaluumRunner extends IMaluumSite {
 		const { username, password }: TiMaluumLoginCredentials =
 			await this._getSavedCredentials();
 
-		if (!username && !password) throw new Error("Unable to fetch login credentials.");
+		// if (username && password) throw new Error("Unable to fetch login credentials.");
 
 		await this._loginToIMaluum(username, password);
 	}
@@ -314,6 +350,9 @@ export class IMaluumRunner extends IMaluumSite {
 	private async _loginToIMaluum(username: string, password: string) {
 		if (this.browser == null) throw new Error("browser puppeteer not running");
 		if (this.page == null) throw new Error("page puppeteer not running");
+
+		// if (!username) throw new Error("Username is missing");
+		// if (!password) throw new Error("Password is missing");
 
 		await this.page.goto(IMALUUM_LOGIN_PAGE);
 
@@ -335,7 +374,14 @@ export class IMaluumRunner extends IMaluumSite {
 				(elem) => elem.textContent
 			);
 
-			if (invalidStr) throw this.error(`⛔️ ${invalidStr}`);
+			if (invalidStr)
+				throw this.error(
+					`⛔️ ${styleText(
+						invalidStr,
+						AnsiColourEnum.RED,
+						AnsiTextStyleEnum.BOLD
+					)}`
+				);
 			else throw new Error("‼️ Unable to proceed from login page");
 		}
 	}
@@ -366,10 +412,7 @@ export class IMaluumRunner extends IMaluumSite {
 			};
 		} catch (e) {
 			console.error(e);
-			return {
-				username: "",
-				password: "",
-			};
+			throw new Error("Unable to fetch credentials!");
 		}
 	}
 

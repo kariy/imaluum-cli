@@ -53,7 +53,7 @@ const list: TCommandCollections = {
 	},
 	authenticate: {
 		name: "authenticate",
-		description: "Authenticate by providing your username and password for i-ma'luum",
+		description: "Authenticate to i-Ma'luum site.",
 		arguments: [],
 		options: [
 			{

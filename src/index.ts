@@ -1,4 +1,5 @@
 import { Command } from "./command";
+import { capitalize } from "./lib/utils";
 import { IMaluumRunner } from "./runner";
 import commandlist from "./lib/commandList";
 import { CommandEnum, TCommandCollections } from "./lib/types";
@@ -7,8 +8,8 @@ export default async (argv?: readonly string[] | undefined): Promise<void> => {
 	const runner = new IMaluumRunner();
 	const command = new Command(
 		"imaluum",
-		"A tool to access i-ma'luum directly from your command line.",
-		"0.0.1"
+		"A tool to access i-Ma'luum directly from your command line.",
+		require("../package.json").version
 	);
 
 	// This is so that `Runner` class can have access to the `Command` error function
@@ -25,10 +26,6 @@ export default async (argv?: readonly string[] | undefined): Promise<void> => {
 			}
 		);
 	}
+
 	await command.program.parseAsync(argv);
 };
-
-function capitalize(str: string): string {
-	const newStr = str.toLowerCase();
-	return newStr.replace(/^\w/, newStr.charAt(0).toUpperCase());
-}

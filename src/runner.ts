@@ -11,7 +11,12 @@ import {
 	IMALUUM_LOGIN_PAGE,
 	IMALUUM_SUBPAGE_LINKS,
 } from "./lib/constants";
-import { CommandEnum, TCommandActionParams, TiMaluumLoginCredentials } from "./lib/types";
+import {
+	CommandEnum,
+	TAuthCommandActionParams,
+	TCommandActionParams,
+	TiMaluumLoginCredentials,
+} from "./lib/types";
 
 class IMaluumSite {
 	protected browser: puppeteer.Browser | null;
@@ -30,8 +35,6 @@ class IMaluumSite {
 		this.browser = await puppeteer.launch();
 		this.page = await this.browser.newPage();
 		fs.mkdirSync(DUMP_BASE_PATH, { recursive: true });
-
-		// await this._login();
 	}
 
 	setErrorCallback(fn: typeof this.errorCallback): void {
@@ -50,62 +53,86 @@ export class IMaluumRunner extends IMaluumSite {
 	}
 
 	async execute<T extends CommandEnum>(command: T, ...args: any[]) {
-		if (command === CommandEnum.Authenticate) return this._authenticate();
-
 		await this._open();
-		await this._login();
 
-		switch (command) {
-			case CommandEnum.Result: {
-				await this._result(...args);
-				break;
+		if (command === CommandEnum.Authenticate) {
+			await this._authenticate(...args);
+		} else {
+			await this._login();
+
+			switch (command) {
+				case CommandEnum.Result: {
+					await this._result(...args);
+					break;
+				}
+				case CommandEnum.Timetable: {
+					await this._timetable(...args);
+					break;
+				}
+				case CommandEnum.Test: {
+					await this._test(command, ...args);
+					break;
+				}
+				default:
+					throw this.error("[ERROR] Unknown command");
 			}
-			case CommandEnum.Timetable: {
-				await this._timetable(...args);
-				break;
-			}
-			case CommandEnum.Test: {
-				await this._test(command, ...args);
-				break;
-			}
-			default:
-				throw this.error("[ERROR] Unknown command");
 		}
 
 		await this._close();
 	}
 
-	private error(message: string, errorOptions?: ErrorOptions): never {
-		if (this.errorCallback) throw this.errorCallback(message, errorOptions);
-		throw new Error(message);
+	private error(message: string, errorOptions?: ErrorOptions): Error {
+		return this.errorCallback
+			? this.errorCallback(message, errorOptions)
+			: new Error(message);
 	}
 
-	private async _authenticate() {
-		const rl = readline.createInterface({
-			input: process.stdin,
-			output: process.stdout,
-		});
-
-		const prompt = async (query: string) =>
-			await new Promise((resolve) => rl.question(query, resolve));
-
-		const credentials: TiMaluumLoginCredentials = {
-			username: "",
-			password: "",
+	private async _authenticate(...args: any[]) {
+		const { options }: TCommandActionParams<CommandEnum.Authenticate> = {
+			options: args[0],
 		};
 
-		rl.on("close", () => {
-			const file = fs.openSync(CREDENTIALS_FILE_PATH, "w+");
-			fs.writeFileSync(file, JSON.stringify(credentials));
+		const writeToFileSync = (path: string, data: any) => {
+			const file = fs.openSync(path, "w+");
+			fs.writeFileSync(file, JSON.stringify(data));
 			fs.close(file);
-		});
+		};
+
+		const credentials = {
+			username: options.username,
+			password: options.password,
+		};
+
+		if (options.interactive) {
+			const rl = readline.createInterface({
+				input: process.stdin,
+				output: process.stdout,
+			});
+
+			const prompt = async (query: string) =>
+				await new Promise((resolve) => rl.question(query, resolve));
+
+			try {
+				credentials.username = (await prompt("# Username >> ")) as string;
+				credentials.password = (await prompt("# Password >> ")) as string;
+				rl.close();
+			} catch (error) {
+				throw error;
+			}
+		} else {
+			if (!credentials.username) throw this.error("Username is missing");
+			if (!credentials.password) throw this.error("Password is missing");
+		}
 
 		try {
-			credentials.username = (await prompt(">> Username\n")) as string;
-			credentials.password = (await prompt(">> Password\n")) as string;
-			rl.close();
+			await this._loginToIMaluum(credentials.username, credentials.password);
+			writeToFileSync(
+				CREDENTIALS_FILE_PATH,
+				credentials as TiMaluumLoginCredentials
+			);
+			console.log("\n🎉 You are authenticated!");
 		} catch (e) {
-			throw new Error("Something wrong just happened");
+			throw e;
 		}
 	}
 
@@ -256,7 +283,6 @@ export class IMaluumRunner extends IMaluumSite {
 		return [elemHandles, elemTextContent];
 	}
 
-	// href="https://imaluum.iium.edu.my/MyAcademic/schedule"
 	private async _navigateToPage(link: string) {
 		if (this.page == null) throw new Error("Puppeteer page not running");
 
@@ -269,38 +295,39 @@ export class IMaluumRunner extends IMaluumSite {
 	}
 
 	private async _login() {
+		const { username, password }: TiMaluumLoginCredentials =
+			this._getSavedCredentials();
+		await this._loginToIMaluum(username, password);
+	}
+
+	private async _loginToIMaluum(username: string, password: string) {
+		if (this.browser == null) throw new Error("browser puppeteer not running");
+		if (this.page == null) throw new Error("page puppeteer not running");
+
+		await this.page.goto(IMALUUM_LOGIN_PAGE);
+
+		const usernameInput = await this.page.$("#username");
+		await usernameInput?.type(username);
+
+		const passwordInput = await this.page.$("#password");
+		await passwordInput?.type(password);
+
+		const form = await this.page.$("#fm1");
+		await form?.press("Enter");
+
+		await this.page.waitForNavigation();
+
 		try {
-			const credentials = this._readCredentialsFromFile();
-
-			if (this.browser == null) throw new Error("browser puppeteer not running");
-
-			if (this.page == null) throw new Error("page puppeteer not running");
-
-			await this.page.goto(IMALUUM_LOGIN_PAGE);
-
-			const usernameInput = await this.page.$("#username");
-			await usernameInput?.type(credentials.username);
-
-			const passwordInput = await this.page.$("#password");
-			await passwordInput?.type(credentials.password);
-
-			const form = await this.page.$("#fm1");
-			await form?.press("Enter");
-
-			await this.page.waitForNavigation();
-
 			//  if unable to login, throw error
 			if (this.page.url() != "https://imaluum.iium.edu.my/home") {
-				throw new Error("Unable to proceed from login!");
+				throw new Error("Unable to proceed from the login page!");
 			}
 		} catch (e) {
-			throw this.error(
-				"Unable to login to i-ma'luum! Please run the `login` command to authenticate yourself."
-			);
+			throw e;
 		}
 	}
 
-	private _readCredentialsFromFile() {
+	private _getSavedCredentials() {
 		try {
 			const credentialsStr = fs.readFileSync(CREDENTIALS_FILE_PATH, {
 				encoding: "utf-8",

@@ -11,12 +11,7 @@ import {
 	IMALUUM_LOGIN_PAGE,
 	IMALUUM_SUBPAGE_LINKS,
 } from "./lib/constants";
-import {
-	CommandEnum,
-	TAuthCommandActionParams,
-	TCommandActionParams,
-	TiMaluumLoginCredentials,
-} from "./lib/types";
+import { CommandEnum, TCommandActionParams, TiMaluumLoginCredentials } from "./lib/types";
 
 class IMaluumSite {
 	protected browser: puppeteer.Browser | null;
@@ -34,7 +29,6 @@ class IMaluumSite {
 	protected async _open() {
 		this.browser = await puppeteer.launch();
 		this.page = await this.browser.newPage();
-		fs.mkdirSync(DUMP_BASE_PATH, { recursive: true });
 	}
 
 	setErrorCallback(fn: typeof this.errorCallback): void {
@@ -52,13 +46,30 @@ export class IMaluumRunner extends IMaluumSite {
 		super();
 	}
 
+	private _setup() {
+		// create dump dir
+		fs.mkdirSync(DUMP_BASE_PATH, { recursive: true });
+		// create credentials file
+		const file = fs.openSync(CREDENTIALS_FILE_PATH, "as+");
+		fs.writeFileSync(file, "");
+		fs.close(file);
+	}
+
 	async execute<T extends CommandEnum>(command: T, ...args: any[]) {
+		await this._setup();
 		await this._open();
 
 		if (command === CommandEnum.Authenticate) {
 			await this._authenticate(...args);
 		} else {
-			await this._login();
+			try {
+				await this._login();
+			} catch (e) {
+				console.error(e);
+				throw this.error(
+					"You are not yet authenticated!. Please run the `authenticate` command first."
+				);
+			}
 
 			switch (command) {
 				case CommandEnum.Result: {
@@ -92,16 +103,14 @@ export class IMaluumRunner extends IMaluumSite {
 			options: args[0],
 		};
 
-		const writeToFileSync = (path: string, data: any) => {
+		const writeToFileSync = (path: string, data: string | NodeJS.ArrayBufferView) => {
 			const file = fs.openSync(path, "w+");
-			fs.writeFileSync(file, JSON.stringify(data));
+			fs.writeFileSync(file, data);
 			fs.close(file);
 		};
 
-		const credentials = {
-			username: options.username,
-			password: options.password,
-		};
+		let username = options.username;
+		let password = options.password;
 
 		if (options.interactive) {
 			const rl = readline.createInterface({
@@ -113,23 +122,22 @@ export class IMaluumRunner extends IMaluumSite {
 				await new Promise((resolve) => rl.question(query, resolve));
 
 			try {
-				credentials.username = (await prompt("# Username >> ")) as string;
-				credentials.password = (await prompt("# Password >> ")) as string;
+				username = (await prompt("# Username >> ")) as string;
+				password = (await prompt("# Password >> ")) as string;
 				rl.close();
 			} catch (error) {
 				throw error;
 			}
 		} else {
-			if (!credentials.username) throw this.error("Username is missing");
-			if (!credentials.password) throw this.error("Password is missing");
+			if (!username) throw this.error("Username is missing");
+			if (!password) throw this.error("Password is missing");
 		}
 
 		try {
-			await this._loginToIMaluum(credentials.username, credentials.password);
-			writeToFileSync(
-				CREDENTIALS_FILE_PATH,
-				credentials as TiMaluumLoginCredentials
-			);
+			await this._loginToIMaluum(username, password);
+
+			writeToFileSync(CREDENTIALS_FILE_PATH, `${username}\n${password}`);
+
 			console.log("\n🎉 You are authenticated!");
 		} catch (e) {
 			throw e;
@@ -296,7 +304,10 @@ export class IMaluumRunner extends IMaluumSite {
 
 	private async _login() {
 		const { username, password }: TiMaluumLoginCredentials =
-			this._getSavedCredentials();
+			await this._getSavedCredentials();
+
+		if (!username && !password) throw new Error("Unable to fetch login credentials.");
+
 		await this._loginToIMaluum(username, password);
 	}
 
@@ -317,24 +328,48 @@ export class IMaluumRunner extends IMaluumSite {
 
 		await this.page.waitForNavigation();
 
-		try {
-			//  if unable to login, throw error
-			if (this.page.url() != "https://imaluum.iium.edu.my/home") {
-				throw new Error("Unable to proceed from the login page!");
-			}
-		} catch (e) {
-			throw e;
+		//  if unable to login, throw error
+		if (this.page.url() != "https://imaluum.iium.edu.my/home") {
+			const invalidStr = await this.page.$eval(
+				"form#fm1 div.alert.alert-danger span",
+				(elem) => elem.textContent
+			);
+
+			if (invalidStr) throw this.error(`⛔️ ${invalidStr}`);
+			else throw new Error("‼️ Unable to proceed from login page");
 		}
 	}
 
-	private _getSavedCredentials() {
+	private async _getSavedCredentials(): Promise<TiMaluumLoginCredentials> {
+		const values = [];
+
 		try {
-			const credentialsStr = fs.readFileSync(CREDENTIALS_FILE_PATH, {
-				encoding: "utf-8",
+			// taken from https://nodejs.org/api/readline.html#readline_example_read_file_stream_line_by_line
+			const fileStream = fs.createReadStream(CREDENTIALS_FILE_PATH);
+
+			const rl = readline.createInterface({
+				input: fileStream,
+				crlfDelay: Infinity,
 			});
-			return JSON.parse(credentialsStr);
+			// Note: we use the crlfDelay option to recognize all instances of CR LF
+			// ('\r\n') in input.txt as a single line break.
+
+			for await (const line of rl) {
+				// Each line in input.txt will be successively available here as `line`.
+				// console.log(`Line from file: ${line}`);
+				values.push(line);
+			}
+
+			return {
+				username: values[0],
+				password: values[1],
+			};
 		} catch (e) {
-			throw new Error("file not found");
+			console.error(e);
+			return {
+				username: "",
+				password: "",
+			};
 		}
 	}
 

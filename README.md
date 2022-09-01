@@ -1,4 +1,4 @@
-# <img width="30" src="https://imaluum.iium.edu.my/assets/images/imaluum-icon.png"> <b>i-Ma'luum CLI </b>
+# <img width="30" src="https://imaluum.iium.edu.my/assets/images/imaluum-icon.png"> <b>i-Ma'luum CLI (In progress)</b>
 
 Access i-Ma'luum directly from your command line.
 
@@ -24,11 +24,11 @@ Features are rather limited at the moment as there is only so much that you can 
 ## 🕹 Usage
 
 ```
-$ imaluum --help
+$ imaluum
 
 Usage: imaluum [options] [command]
 
-A tool to access i-Ma'luum directly from your command line.
+A tool to access i-ma'luum directly from your command line.
 
 Options:
 
@@ -39,7 +39,7 @@ Commands:
 
   result [options] <semester> <year>     Get your examination result.
   timetable [options] <semester> <year>  Show class timetable for the given semester.
-  authenticate                           Authenticate to i-Ma'luum.
+  authenticate [options]                 Authenticate to i-Ma'luum site.
   help [command]                         display help for command
 ```
 
@@ -49,6 +49,7 @@ Commands:
 -   [ ] Add more colours. 🎨
 -   [ ] Add loader. 🔁
 -   [ ] Better error messages. 🚫
+-   [ ] Make it run faster (idk how). ⚡
 
 ## 📣 Disclaimer
 

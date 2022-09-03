@@ -86,14 +86,15 @@ export class Loader {
 	}
 
 	startAsyncTask<T>(action: () => Promise<T>): Promise<T> {
-		return new Promise(async (resolve) => {
+		return new Promise(async (resolve, reject) => {
 			this.start();
 			try {
 				const data = await action();
 				await this.stop(() => resolve(data));
 			} catch (e) {
 				await this.stop();
-				throw e;
+				reject(e);
+				// throw e;
 			}
 		});
 	}

@@ -8,13 +8,15 @@ Access i-Ma'luum directly from your command line.
 
 -   Must have [`Node.js` & `npm`](https://nodejs.org/en/download/package-manager/) installed.
 
+To install, just do :
+
 ```
 $ npm install -g imaluum-cli
 ```
 
 ## ✨ Features
 
-Features are rather limited at the moment as there is only so much that you can do on a command line but some features that most people would only use are available right now. (<i>or to be implemented</i>)
+Features are rather limited at the moment as there is only so much that you can do on i-Ma'luum from a command line but features that most people would often use are available right now. (<i>or to be implemented</i>)
 
 -   [x] Exam Result
 -   [x] Class Timetable
@@ -28,7 +30,7 @@ $ imaluum
 
 Usage: imaluum [options] [command]
 
-A tool to access i-ma'luum directly from your command line.
+A tool to access i-Ma'luum directly from your command line.
 
 Options:
 
@@ -48,7 +50,7 @@ Commands:
 -   [ ] Add support to output as image `.png` for exam result, class, & exam timetable. 📷
 -   [ ] Add more colours. 🎨
 -   [ ] Add loader. 🔁
--   [ ] Better error messages. 🚫
+-   [ ] Better error handling. 🚫
 -   [ ] Make it run faster (idk how). ⚡
 
 ## 📣 Disclaimer

@@ -47,6 +47,10 @@ export class Loader {
 		this.eventEmitter = new EventEmitter();
 	}
 
+	setText(text: string) {
+		this.text = text;
+	}
+
 	async start() {
 		this.shouldRun = true;
 
@@ -69,7 +73,7 @@ export class Loader {
 		this.eventEmitter.emit("animation finish");
 	}
 
-	async stop() {
+	async stop(callback?: () => void) {
 		this.eventEmitter.emit("stop");
 
 		await (() => {
@@ -77,12 +81,21 @@ export class Loader {
 				this.eventEmitter.once("animation finish", () => resolve())
 			);
 		})();
+
+		if (callback) callback();
 	}
 
-	async startAsyncTask<T>(action: () => Promise<T>): Promise<T> {
-		this.start();
-		const data = await action();
-		await this.stop();
-		return data;
+	startAsyncTask<T>(action: () => Promise<T>): Promise<T> {
+		return new Promise(async (resolve, reject) => {
+			this.start();
+			try {
+				const data = await action();
+				await this.stop(() => resolve(data));
+			} catch (e) {
+				await this.stop();
+				reject(e);
+				// throw e;
+			}
+		});
 	}
 }

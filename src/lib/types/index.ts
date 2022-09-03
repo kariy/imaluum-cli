@@ -61,9 +61,11 @@ export type TiMaluumLoginCredentials = {
 	password: string;
 };
 
-export type TiMaluumPageLinkCollections = {
-	[Property in Uppercase<Exclude<keyof typeof CommandEnum, "Authenticate">>]: string;
+export type TiMaluumSubpageLinkCollections = {
+	[Property in TiMaluumSubPage]: string;
 };
+
+export type TiMaluumSubPage = "RESULT" | "TIMETABLE";
 
 export enum AnsiTextStyleEnum {
 	BOLD = "\x1b[1m",

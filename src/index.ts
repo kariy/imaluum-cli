@@ -1,11 +1,11 @@
 import { Command } from "./command";
 import { capitalize } from "./lib/utils";
-import { IMaluumRunner } from "./runner";
+import { CommandExecutor } from "./executor";
 import commandlist from "./lib/commandList";
 import { CommandEnum, TCommandCollections } from "./lib/types";
 
 export default async (argv?: readonly string[] | undefined): Promise<void> => {
-	const runner = new IMaluumRunner();
+	const runner = await CommandExecutor.setup();
 	const command = new Command(
 		"imaluum",
 		"A tool to access i-Ma'luum directly from your command line.",

@@ -1,6 +1,6 @@
 {
 	"name": "imaluum-cli",
-	"version": "0.3.0-0",
+	"version": "0.3.1-0",
 	"description": "Access i-Ma'luum directly from your favourite command line.",
 	"main": "src/index.js",
 	"bin": {

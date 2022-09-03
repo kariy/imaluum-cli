@@ -1,6 +1,6 @@
 import { Command } from "./command";
 import { capitalize } from "./lib/utils";
-import { CommandExecutor } from "./runner";
+import { CommandExecutor } from "./executor";
 import commandlist from "./lib/commandList";
 import { CommandEnum, TCommandCollections } from "./lib/types";
 

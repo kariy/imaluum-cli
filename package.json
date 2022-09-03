@@ -9,8 +9,7 @@
 	"scripts": {
 		"test": "echo \"Error: no test specified\" && exit 1",
 		"compile": "tsc",
-		"start": "npm run compile && node ./bin/index.js",
-		"preinstall": "npm run compile"
+		"start": "npm run compile && node ./bin/index.js"
 	},
 	"repository": {
 		"type": "git",

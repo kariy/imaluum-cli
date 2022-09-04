@@ -1,9 +1,6 @@
 {
 	"name": "imaluum-cli",
-<<<<<<< HEAD
-=======
 	"version": "0.3.2-0",
->>>>>>> parent of 28cc794 (0.3.3-0)
 	"description": "Access i-Ma'luum directly from your favourite command line.",
 	"main": "src/index.js",
 	"bin": {

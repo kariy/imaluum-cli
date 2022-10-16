@@ -8,7 +8,13 @@ import fs from "node:fs";
 import readline from "node:readline";
 import { open } from "node:fs/promises";
 
-import { COOKIE_FILE_PATH, CREDENTIALS_FILE_PATH, DUMP_BASE_PATH } from "./lib/constants";
+import {
+	COOKIE_FILE_PATH,
+	CREDENTIALS_FILE_PATH,
+	DUMP_BASE_PATH,
+	RESULT_TABLE_PATH,
+	TIMETABLE_TABLE_PATH,
+} from "./lib/constants";
 import {
 	AnsiColourEnum,
 	AnsiTextStyleEnum,
@@ -240,10 +246,12 @@ export class CommandExecutor {
 
 			await page.selectTimetableOrResultDropDownMenuItem(semester, year);
 
-			const filePath = `${DUMP_BASE_PATH}/result_table.html`;
-			const tableStr = await page.extractTimetableAndResultTableElement(filePath, {
-				width: options.width,
-			});
+			const tableStr = await page.extractTimetableAndResultTableElement(
+				RESULT_TABLE_PATH,
+				{
+					width: options.width,
+				}
+			);
 
 			if (tableStr.length !== 0) resolve(tableStr);
 			else reject();
@@ -290,10 +298,12 @@ export class CommandExecutor {
 
 			await page.selectTimetableOrResultDropDownMenuItem(semester, year);
 
-			const filePath = `${DUMP_BASE_PATH}/timetable_table.html`;
-			const tableStr = await page.extractTimetableAndResultTableElement(filePath, {
-				width: options.width,
-			});
+			const tableStr = await page.extractTimetableAndResultTableElement(
+				TIMETABLE_TABLE_PATH,
+				{
+					width: options.width,
+				}
+			);
 
 			if (tableStr.length !== 0) resolve(tableStr);
 			else reject();

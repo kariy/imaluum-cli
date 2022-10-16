@@ -25,7 +25,9 @@
 	"homepage": "https://github.com/kariy/imaluum-cli#readme",
 	"dependencies": {
 		"commander": "^9.4.0",
-		"puppeteer": "^17.0.0"
+		"html-table-to-json": "^1.0.0",
+		"puppeteer": "^17.0.0",
+		"table": "^6.8.0"
 	},
 	"devDependencies": {
 		"typescript": "^4.8.2"

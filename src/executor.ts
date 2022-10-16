@@ -246,12 +246,7 @@ export class CommandExecutor {
 
 			await page.selectTimetableOrResultDropDownMenuItem(semester, year);
 
-			const tableStr = await page.extractTimetableAndResultTableElement(
-				RESULT_TABLE_PATH,
-				{
-					width: options.width,
-				}
-			);
+			const tableStr = await page.extractTableElement();
 
 			if (tableStr.length !== 0) resolve(tableStr);
 			else reject();
@@ -298,12 +293,7 @@ export class CommandExecutor {
 
 			await page.selectTimetableOrResultDropDownMenuItem(semester, year);
 
-			const tableStr = await page.extractTimetableAndResultTableElement(
-				TIMETABLE_TABLE_PATH,
-				{
-					width: options.width,
-				}
-			);
+			const tableStr = await page.extractTableElement();
 
 			if (tableStr.length !== 0) resolve(tableStr);
 			else reject();
@@ -311,15 +301,7 @@ export class CommandExecutor {
 	}
 
 	private _displayTable(table: string) {
-		const firstLine = table.match(/.*\n/);
-		const line = "-";
-
-		let tableLen;
-		if (firstLine != null) tableLen = firstLine[0]?.length;
-
-		tableLen ? console.log(`${line.repeat(tableLen)}\n`) : null;
 		console.log(table);
-		tableLen ? console.log(`${line.repeat(tableLen)}\n`) : null;
 	}
 
 	private async _getSavedCredentials(): Promise<TiMaluumLoginCredentials> {

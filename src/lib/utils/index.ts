@@ -2,6 +2,8 @@ import fs from "node:fs";
 
 import { AnsiColourEnum, AnsiTextStyleEnum } from "../types";
 
+const HTMLTableToJson = require('html-table-to-json');
+
 export function capitalize(str: string): string {
 	const newStr = str.toLowerCase();
 	return newStr.replace(/^\w/, newStr.charAt(0).toUpperCase());
@@ -27,3 +29,18 @@ export const readFromFileSync = (path: string): string => {
 	fs.close(file);
 	return data;
 };
+
+export const parseHTMLTableJson = (tableHTMLString: string): string[][] => {
+	const jsonTable = HTMLTableToJson.parse(tableHTMLString).results[0];
+	const tableElem: string[][] = [];
+
+	// fetch keys
+	tableElem.push(Object.entries(jsonTable[0]).map((entry) => styleText(entry[0], AnsiColourEnum.GREEN, AnsiTextStyleEnum.BOLD)));
+
+	for (let i = 0; i < jsonTable.length; i++) {
+		tableElem.push(Object.entries(jsonTable[i]).map((entry) => entry[1] as string));
+	}
+
+	return tableElem;
+};
+

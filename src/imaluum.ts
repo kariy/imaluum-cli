@@ -1,4 +1,5 @@
 import puppeteer from "puppeteer";
+import { table } from "table";
 
 import fs from "node:fs";
 import cp from "child_process";
@@ -8,8 +9,9 @@ import {
 	IMALUUM_LOGIN_PAGE,
 	IMALUUM_SUBPAGE_LINKS,
 } from "./lib/constants";
-import { capitalize } from "./lib/utils";
+import { capitalize, parseHTMLTableJson } from "./lib/utils";
 import { TiMaluumSubPage } from "./lib/types";
+
 
 class Page {
 	browser: puppeteer.Browser | null = null;
@@ -164,18 +166,21 @@ export class IMaluumSubPage {
 	}
 
 	// `width` the extracted table width
-	async extractTimetableAndResultTableElement(
-		file: fs.PathOrFileDescriptor,
-		options: { width: string }
-	): Promise<string> {
+	async extractTableElement(): Promise<string> {
 		const tableHTMLString = await this.page?.$eval(
 			"section.content table",
 			(elem) => elem.outerHTML
 		);
-		fs.writeFileSync(file, tableHTMLString);
-		return cp.execSync(`links -width ${options.width} -dump ${file}`, {
-			encoding: "utf-8",
-		});
+
+		if (this.type == "TIMETABLE")
+			return table(parseHTMLTableJson(tableHTMLString));
+		else {
+			let tableJson = parseHTMLTableJson(tableHTMLString);
+			// remove last elem bcs not valid table elem
+			// TODO: parse this last elem
+			tableJson.pop()
+			return table(tableJson);
+		}
 	}
 
 	async selectTimetableOrResultDropDownMenuItem(semester: string, year: string) {

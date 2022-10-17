@@ -1,6 +1,6 @@
 {
 	"name": "imaluum-cli",
-	"version": "0.3.5-0",
+	"version": "0.4.0",
 	"description": "Access i-Ma'luum directly from your favourite command line.",
 	"main": "src/index.js",
 	"bin": {
@@ -25,7 +25,9 @@
 	"homepage": "https://github.com/kariy/imaluum-cli#readme",
 	"dependencies": {
 		"commander": "^9.4.0",
-		"puppeteer": "^17.0.0"
+		"html-table-to-json": "^1.0.0",
+		"puppeteer": "^17.0.0",
+		"table": "^6.8.0"
 	},
 	"devDependencies": {
 		"typescript": "^4.8.2"

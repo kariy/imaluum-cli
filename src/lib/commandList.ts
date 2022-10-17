@@ -16,11 +16,6 @@ const list: TCommandCollections = {
 			},
 		],
 		options: [
-			{
-				flags: "-w, --width <width>",
-				description: "Set table output width.",
-				defaultValue: "90",
-			},
 		],
 	},
 	timetable: {
@@ -38,11 +33,6 @@ const list: TCommandCollections = {
 			},
 		],
 		options: [
-			{
-				flags: "-w, --width <width>",
-				description: "Set table output width.",
-				defaultValue: "90",
-			},
 		],
 	},
 	test: {
